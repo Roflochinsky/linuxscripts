@@ -165,7 +165,7 @@ cat > "$LOCAL_DIR/update.sh" << 'UPDATE_EOF'
 #!/bin/bash
 # Обновление скриптов до последней версии
 cd "$(dirname "$0")"
-wget -q https://raw.githubusercontent.com/user/ubuntu-raid-scripts/main/download-scripts.sh -O /tmp/download-scripts.sh
+        wget -q https://raw.githubusercontent.com/Roflochinsky/linuxscripts/main/download-scripts.sh -O /tmp/download-scripts.sh
 chmod +x /tmp/download-scripts.sh
 /tmp/download-scripts.sh
 UPDATE_EOF
