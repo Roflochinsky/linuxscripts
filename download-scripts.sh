@@ -11,10 +11,37 @@ error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
+# Универсальная функция конвертации Windows -> Unix формата
+convert_to_unix() {
+    local file="$1"
+    
+    # Проверяем нужна ли конвертация
+    if file "$file" | grep -q "CRLF\|CR line terminators"; then
+        log "   🔄 Конвертация из Windows формата в Unix..."
+        
+        # Пробуем разные способы конвертации
+        if command -v dos2unix >/dev/null 2>&1; then
+            dos2unix "$file" 2>/dev/null
+            log "   ✅ Конвертация выполнена (dos2unix)"
+        elif command -v sed >/dev/null 2>&1; then
+            sed -i 's/\r$//' "$file" 2>/dev/null
+            log "   ✅ Конвертация выполнена (sed)"
+        elif command -v tr >/dev/null 2>&1; then
+            tr -d '\r' < "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+            log "   ✅ Конвертация выполнена (tr)"
+        else
+            warning "   ⚠️  Не удалось найти инструменты для конвертации"
+            warning "   ⚠️  Установите dos2unix: sudo apt-get install dos2unix"
+        fi
+    else
+        log "   ✅ Файл уже в Unix формате"
+    fi
+}
+
 log "=== 📥 СКАЧИВАНИЕ UBUNTU RAID СКРИПТОВ ==="
 
 # Настройки
-GITHUB_REPO="https://raw.githubusercontent.com/user/ubuntu-raid-scripts/main"
+GITHUB_REPO="https://raw.githubusercontent.com/Roflochinsky/linuxscripts/main"
 LOCAL_DIR="$HOME/raid-scripts"
 TEMP_DIR="/tmp/raid-scripts-download"
 
@@ -45,8 +72,11 @@ for script in "${SCRIPTS[@]}"; do
     log "📥 Скачивание $script..."
     
     if wget -q "$GITHUB_REPO/$script" -O "$script"; then
+        # Автоматическая конвертация формата файла
+        convert_to_unix "$script"
+        
         chmod +x "$script"
-        log "   ✅ $script скачан"
+        log "   ✅ $script скачан и готов к использованию"
     else
         error "   ❌ Ошибка скачивания $script"
         continue
@@ -66,9 +96,17 @@ if [[ $DOWNLOADED -eq 0 ]]; then
     exit 1
 fi
 
-# Копирование в финальную директорию
+# Копирование в финальную директорию  
 log "📂 Установка скриптов..."
 cp *.sh "$LOCAL_DIR/"
+
+# Дополнительная проверка и конвертация установленных скриптов
+log "🔄 Проверка формата установленных скриптов..."
+for script in "$LOCAL_DIR"/*.sh; do
+    if [[ -f "$script" ]]; then
+        convert_to_unix "$script"
+    fi
+done
 
 # Создание README
 cat > "$LOCAL_DIR/README.md" << 'EOF'
